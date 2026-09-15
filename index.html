@@ -171,7 +171,7 @@ const DEFAULT_SHOPS = [
   { id: "s3", name: "माँ लक्ष्मी स्टोर", area: "स्टेशन रोड", address: "8/21, स्टेशन रोड, चौक, लखनऊ — 226003", phone: "9988776655", pin: "3333" },
 ];
 
-const VENDOR = { pin: "0000", name: "राम डेयरी" };
+const VENDOR = { pin: "9999", name: "राम डेयरी" };
 const ADMIN = { pin: "9999", name: "Admin" };
 
 const KEY = "doodhsetu_v3";
@@ -187,8 +187,8 @@ function load() {
     if (!s.shops) s.shops = withStatus(DEFAULT_SHOPS.slice());
     else s.shops = s.shops.map(x => ({ ...x, status: x.status || "approved" }));
     if (!s.orders) s.orders = [];
-    if (!s.vendorPin) s.vendorPin = VENDOR.pin;
-    if (!s.adminPin) s.adminPin = ADMIN.pin;
+    if (!s.vendorPin || s.vendorPin === "0000") s.vendorPin = "9999";
+    if (!s.adminPin) s.adminPin = "9999";
     return s;
   }
   return { orders: [], shops: withStatus(DEFAULT_SHOPS.slice()), vendorPin: VENDOR.pin, adminPin: ADMIN.pin };
@@ -296,6 +296,17 @@ function renderLogin() {
           <div style="height:8px"></div>
           <button class="btn btn-ghost" onclick="showRegister=true;render()">नई दुकान रजिस्टर करें</button>
           <p class="hint">नाम/नंबर लिस्ट में नहीं दिखते। पहले रजिस्टर → एडमिन अप्रूव + PIN दे → फिर फोन और PIN से लॉगिन।</p>
+          <div style="border-top:1px dashed #eadcc8;margin:18px 0 12px"></div>
+          <h3 class="dev" style="margin:0 0 10px">वेंडर / एडमिन लॉगिन</h3>
+          <label>वेंडर PIN</label>
+          <input id="vLoginPin" type="password" inputmode="numeric" placeholder="9999" />
+          <div style="height:8px"></div>
+          <button class="btn btn-dark" onclick="staffLogin('vendor')">वेंडर लॉगिन</button>
+          <div style="height:14px"></div>
+          <label>एडमिन PIN</label>
+          <input id="aLoginPin" type="password" inputmode="numeric" placeholder="9999" />
+          <div style="height:8px"></div>
+          <button class="btn btn-dark" onclick="staffLogin('admin')">एडमिन लॉगिन</button>
         `) : loginRole==="vendor" ? `
           <label>वेंडर PIN</label>
           <input id="pin" type="password" inputmode="numeric" placeholder="वेंडर PIN" />
@@ -319,7 +330,7 @@ function doLogin() {
     if (pin !== state.adminPin) return toast("गलत एडमिन PIN — 9999 डालें");
     session = { role: "admin" };
   } else if (loginRole === "vendor") {
-    if (pin !== state.vendorPin) return toast("गलत वेंडर PIN");
+    if (pin !== state.vendorPin) return toast("गलत वेंडर PIN — 9999 डालें");
     session = { role: "vendor" };
   } else {
     const phone = document.getElementById("phone").value.trim();
@@ -331,6 +342,17 @@ function doLogin() {
     session = { role: "shop", shopId: shop.id };
     shopTab = "menu";
   }
+  persistSession();
+  cart = {};
+  render();
+}
+
+function staffLogin(role) {
+  const id = role === "admin" ? "aLoginPin" : "vLoginPin";
+  const pin = (document.getElementById(id) || {}).value;
+  const expected = role === "admin" ? state.adminPin : state.vendorPin;
+  if (!pin || pin.trim() !== expected) return toast("गलत PIN — 9999 डालें");
+  session = { role };
   persistSession();
   cart = {};
   render();
