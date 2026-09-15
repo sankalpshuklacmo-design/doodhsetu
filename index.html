@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>DoodhSetu — Shop Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:wght@400;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream: #f7f1e6;
+      --paper: #fffdf8;
+      --ink: #1c140c;
+      --muted: #6b5a48;
+      --line: #e6d8c4;
+      --milk: #fff8ea;
+      --saffron: #c45a12;
+      --saffron-d: #9a4208;
+      --green: #2f6b3a;
+      --green-s: #e8f3ea;
+      --blue: #1e4d6b;
+      --chip: #efe4d2;
+      --shadow: 0 10px 30px rgba(80, 50, 10, 0.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--cream); color: var(--ink); font-family: "DM Sans", system-ui, sans-serif; }
+    h1, h2, h3, .dev { font-family: "Tiro Devanagari Hindi", "DM Sans", serif; }
+    button, input, select { font-family: inherit; }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: linear-gradient(180deg, #fff8ea 0%, var(--cream) 180px); position: relative; }
+    .topbar {
+      padding: 16px 18px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; gap: 10px; align-items: center; }
+    .logo {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: linear-gradient(145deg, #f3c56b, #c45a12);
+      display: grid; place-items: center; color: white; font-weight: 700; font-size: 18px;
+      box-shadow: var(--shadow);
+    }
+    .brand small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+    .chip { background: var(--chip); border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+    .screen { padding: 8px 16px 90px; }
+    .card {
+      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+    }
+    .hero {
+      background: linear-gradient(135deg, #2b1a0e 0%, #6a3a16 55%, #c45a12 140%);
+      color: #fff8ea; border: none;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 26px; font-weight: 400; }
+    .hero p { margin: 0; opacity: .85; font-size: 14px; }
+    .row { display: flex; gap: 8px; }
+    .grow { flex: 1; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input, select {
+      width: 100%; padding: 12px 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: #fff; font-size: 16px; color: var(--ink);
+    }
+    .btn {
+      border: 0; border-radius: 14px; padding: 13px 16px; font-weight: 600; font-size: 15px;
+      cursor: pointer; width: 100%;
+    }
+    .btn-primary { background: var(--saffron); color: white; }
+    .btn-primary:active { background: var(--saffron-d); }
+    .btn-dark { background: var(--ink); color: var(--milk); }
+    .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+    .btn-sm { padding: 8px 10px; font-size: 13px; width: auto; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+    .tab {
+      border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 12px;
+      text-align: center; cursor: pointer;
+    }
+    .tab.on { background: #1c140c; color: #fff8ea; border-color: #1c140c; }
+    .tab small { display: block; opacity: .7; font-size: 11px; margin-top: 2px; }
+    .prod {
+      display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--line);
+    }
+    .prod:last-child { border-bottom: 0; }
+    .emoji { width: 42px; height: 42px; border-radius: 12px; background: #f3ead8; display: grid; place-items: center; font-size: 22px; }
+    .prod h4 { margin: 0; font-size: 15px; font-weight: 600; }
+    .prod p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+    .stepper { display: flex; align-items: center; gap: 8px; }
+    .stepper button {
+      width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line);
+      background: #fff; font-size: 18px; cursor: pointer;
+    }
+    .stepper span { min-width: 28px; text-align: center; font-weight: 700; }
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: var(--ink); color: white; padding: 12px 16px; border-radius: 999px;
+      font-size: 14px; display: none; z-index: 20; white-space: nowrap;
+    }
+    .kpi { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .kpi div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .kpi b { display: block; font-size: 20px; }
+    .kpi span { font-size: 11px; color: var(--muted); }
+    .order-line { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+    .status { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--green-s); color: var(--green); }
+    .status.pending { background: #fde9d4; color: #9a4208; }
+    .hidden { display: none !important; }
+    .login-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .choice {
+      border: 1px solid var(--line); border-radius: 16px; padding: 16px; text-align: center; background: #fff; cursor: pointer;
+    }
+    .choice.on { outline: 2px solid var(--saffron); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .footer-note { text-align: center; color: var(--muted); font-size: 11px; padding: 8px 16px 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 0; border-bottom: 1px solid var(--line); }
+    td { padding: 8px 0; border-bottom: 1px dashed var(--line); vertical-align: top; }
+    .pill { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app"></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const PRODUCTS = [
+  { id: "cow500", name: "गाय का दूध", en: "Cow Milk 500ml", unit: "पैकेट", emoji: "🥛", price: 32 },
+  { id: "cow1", name: "गाय का दूध", en: "Cow Milk 1L", unit: "पैकेट", emoji: "🥛", price: 60 },
+  { id: "buf500", name: "भैंस का दूध", en: "Buffalo 500ml", unit: "पैकेट", emoji: "🥛", price: 38 },
+  { id: "buf1", name: "भैंस का दूध", en: "Buffalo 1L", unit: "पैकेट", emoji: "🥛", price: 72 },
+  { id: "dahi200", name: "दही", en: "Dahi 200g", unit: "कप", emoji: "🥣", price: 25 },
+  { id: "dahi400", name: "दही", en: "Dahi 400g", unit: "कप", emoji: "🥣", price: 45 },
+  { id: "paneer", name: "पनीर", en: "Paneer 200g", unit: "पैक", emoji: "🧀", price: 90 },
+  { id: "ghee", name: "देशी घी", en: "Ghee 500ml", unit: "डिब्बा", emoji: "🫙", price: 320 },
+];
+
+const SHOPS = [
+  { id: "s1", name: "शर्मा जनरल स्टोर", area: "राजेंद्र नगर", pin: "1111" },
+  { id: "s2", name: "गणेश किराना", area: "सुंदर नगर", pin: "2222" },
+  { id: "s3", name: "माँ लक्ष्मी स्टोर", area: "स्टेशन रोड", pin: "3333" },
+];
+
+const VENDOR = { pin: "0000", name: "राम डेयरी" };
+
+const KEY = "doodhsetu_v1";
+
+function load() {
+  const raw = localStorage.getItem(KEY);
+  if (raw) return JSON.parse(raw);
+  return { orders: [] };
+}
+function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+let state = load();
+let session = JSON.parse(sessionStorage.getItem("doodh_session") || "null");
+let cart = {};
+let batch = "subah";
+let loginRole = "shop";
+
+function todayISO() {
+  const d = new Date();
+  const z = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+}
+function fmtDate(iso) {
+  const [y,m,d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2200);
+}
+function persistSession() {
+  sessionStorage.setItem("doodh_session", JSON.stringify(session));
+}
+
+function render() {
+  if (!session) return renderLogin();
+  if (session.role === "vendor") return renderVendor();
+  return renderShop();
+}
+
+function renderLogin() {
+  document.getElementById("app").innerHTML = `
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">द</div>
+        <div><strong>DoodhSetu</strong><small>Vendor × Shop orders</small></div>
+      </div>
+    </div>
+    <div class="screen">
+      <div class="card hero">
+        <h1 class="dev">रोज़ का ऑर्डर,<br/>बिना कॉपी के।</h1>
+        <p>दुकानदार ऐप से ऑर्डर भेजे। वेंडर को सुबह–शाम की पूरी लिस्ट मिल जाए।</p>
+      </div>
+      <div class="card">
+        <label>आप कौन हैं?</label>
+        <div class="login-choice">
+          <div class="choice ${loginRole==="shop"?"on":""}" onclick="loginRole='shop';render()">
+            <div style="font-size:28px">🏪</div>
+            <b>दुकानदार</b>
+            <div class="hint">ऑर्डर भेजें</div>
+          </div>
+          <div class="choice ${loginRole==="vendor"?"on":""}" onclick="loginRole='vendor';render()">
+            <div style="font-size:28px">🚚</div>
+            <b>वेंडर</b>
+            <div class="hint">सारे ऑर्डर देखें</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        ${loginRole==="shop" ? `
+          <label>दुकान चुनें</label>
+          <select id="shopSel">${SHOPS.map(s=>`<option value="${s.id}">${s.name} — ${s.area}</option>`).join("")}</select>
+          <div style="height:10px"></div>
+          <label>PIN</label>
+          <input id="pin" type="password" inputmode="numeric" placeholder="डेमो PIN: 1111 / 2222 / 3333" />
+        ` : `
+          <label>वेंडर PIN</label>
+          <input id="pin" type="password" inputmode="numeric" placeholder="डेमो PIN: 0000" />
+        `}
+        <div style="height:12px"></div>
+        <button class="btn btn-primary" onclick="doLogin()">लॉगिन</button>
+        <p class="hint">यह डेमो आपके फोन में ही सेव होता है (localStorage)। सर्वर नहीं लगा है।</p>
+      </div>
+    </div>
+    <div class="footer-note">DoodhSetu demo · morning + evening batches</div>
+  `;
+}
+
+function doLogin() {
+  const pin = document.getElementById("pin").value.trim();
+  if (loginRole === "vendor") {
+    if (pin !== VENDOR.pin) return toast("गलत PIN — 0000 डालें");
+    session = { role: "vendor" };
+  } else {
+    const shopId = document.getElementById("shopSel").value;
+    const shop = SHOPS.find(s => s.id === shopId);
+    if (pin !== shop.pin) return toast("गलत PIN — दुकान वाला PIN डालें");
+    session = { role: "shop", shopId };
+  }
+  persistSession();
+  cart = {};
+  render();
+}
+
+function logout() {
+  session = null;
+  sessionStorage.removeItem("doodh_session");
+  render();
+}
+
+function renderShop() {
+  const shop = SHOPS.find(s => s.id === session.shopId);
+  const items = PRODUCTS.map(p => {
+    const q = cart[p.id] || 0;
+    return `
+      <div class="prod">
+        <div class="emoji">${p.emoji}</div>
+        <div class="grow">
+          <h4>${p.name}</h4>
+          <p>${p.en} · ₹${p.price}/${p.unit}</p>
+        </div>
+        <div class="stepper">
+          <button onclick="chg('${p.id}',-1)">−</button>
+          <span>${q}</span>
+          <button onclick="chg('${p.id}',1)">+</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  const myOrders = state.orders
+    .filter(o => o.shopId === shop.id)
+    .sort((a,b) => (b.date+b.batch+b.id).localeCompare(a.date+a.batch+a.id))
+    .slice(0, 8);
+
+  const totalQty = Object.values(cart).reduce((a,b)=>a+b,0);
+  const totalAmt = PRODUCTS.reduce((s,p)=> s + (cart[p.id]||0)*p.price, 0);
+
+  document.getElementById("app").innerHTML = `
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">द</div>
+        <div><strong>${shop.name}</strong><small>${shop.area}</small></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">बाहर</button>
+    </div>
+    <div class="screen">
+      <div class="tabs">
+        <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">
+          सुबह का बैच<small>आज डिलीवरी</small>
+        </div>
+        <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">
+          शाम का बैच<small>आज शाम</small>
+        </div>
+      </div>
+      <div class="card">
+        ${items}
+        <div style="display:flex;justify-content:space-between;margin-top:12px;align-items:center">
+          <div>
+            <div class="hint">${totalQty} आइटम</div>
+            <b>₹${totalAmt}</b>
+          </div>
+          <div class="row" style="width:auto;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="repeatLast()">पिछला दोहराएँ</button>
+            <button class="btn btn-primary btn-sm" style="width:auto;padding:10px 16px" onclick="placeOrder()">ऑर्डर भेजें</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="dev" style="margin:0 0 8px">पिछले ऑर्डर</h3>
+        ${myOrders.length===0 ? `<p class="hint">अभी कोई ऑर्डर नहीं।</p>` :
+          myOrders.map(o => `
+            <div style="padding:8px 0;border-bottom:1px dashed var(--line)">
+              <div style="display:flex;justify-content:space-between">
+                <b>${fmtDate(o.date)} · ${o.batch==="subah"?"सुबह":"शाम"}</b>
+                <span class="status ${o.status==="pending"?"pending":""}">${o.status==="pending"?"लंबित":"डिलीवर"}</span>
+              </div>
+              <div class="hint">${o.items.map(i=>{
+                const p=PRODUCTS.find(x=>x.id===i.id); return `${p.en} × ${i.qty}`;
+              }).join(" · ")}</div>
+            </div>
+          `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function chg(id, d) {
+  cart[id] = Math.max(0, (cart[id]||0) + d);
+  if (cart[id] === 0) delete cart[id];
+  render();
+}
+
+function repeatLast() {
+  const shop = SHOPS.find(s => s.id === session.shopId);
+  const last = [...state.orders].reverse().find(o => o.shopId === shop.id && o.batch === batch);
+  if (!last) return toast("इस बैच का पुराना ऑर्डर नहीं मिला");
+  cart = {};
+  last.items.forEach(i => cart[i.id] = i.qty);
+  toast("पिछला ऑर्डर भर दिया");
+  render();
+}
+
+function placeOrder() {
+  const items = Object.entries(cart).filter(([,q])=>q>0).map(([id,qty])=>({id,qty}));
+  if (!items.length) return toast("पहले मात्रा चुनें");
+  const shop = SHOPS.find(s => s.id === session.shopId);
+  const existing = state.orders.find(o => o.shopId===shop.id && o.date===todayISO() && o.batch===batch && o.status==="pending");
+  if (existing) {
+    existing.items = items;
+    existing.ts = Date.now();
+    toast("आज का ऑर्डर अपडेट हो गया");
+  } else {
+    state.orders.push({
+      id: "o"+Date.now(),
+      shopId: shop.id,
+      date: todayISO(),
+      batch,
+      items,
+      status: "pending",
+      ts: Date.now()
+    });
+    toast("ऑर्डर वेंडर के पास चला गया");
+  }
+  save(state);
+  cart = {};
+  render();
+}
+
+function renderVendor() {
+  const date = todayISO();
+  const todays = state.orders.filter(o => o.date === date);
+  const byBatch = b => todays.filter(o => o.batch === b);
+  const pending = todays.filter(o => o.status === "pending").length;
+
+  const pack = {};
+  todays.filter(o => o.batch === batch).forEach(o => {
+    o.items.forEach(i => pack[i.id] = (pack[i.id]||0) + i.qty);
+  });
+
+  document.getElementById("app").innerHTML = `
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">द</div>
+        <div><strong>${VENDOR.name}</strong><small>आज ${fmtDate(date)}</small></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">बाहर</button>
+    </div>
+    <div class="screen">
+      <div class="kpi">
+        <div><b>${todays.length}</b><span>आज के ऑर्डर</span></div>
+        <div><b>${pending}</b><span>बाकी डिलीवरी</span></div>
+        <div><b>${SHOPS.length}</b><span>दुकानें</span></div>
+      </div>
+      <div class="tabs">
+        <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">
+          सुबह<small>${byBatch("subah").length} ऑर्डर</small>
+        </div>
+        <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">
+          शाम<small>${byBatch("shaam").length} ऑर्डर</small>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="dev" style="margin:0 0 8px">पैकिंग लिस्ट · ${batch==="subah"?"सुबह":"शाम"}</h3>
+        ${Object.keys(pack).length===0 ? `<p class="hint">इस बैच में अभी ऑर्डर नहीं।</p>` : `
+          <table>
+            <tr><th>प्रोडक्ट</th><th style="text-align:right">कुल</th></tr>
+            ${Object.entries(pack).map(([id,qty])=>{
+              const p=PRODUCTS.find(x=>x.id===id);
+              return `<tr><td>${p.emoji} ${p.name}<br/><span class="hint">${p.en}</span></td><td style="text-align:right"><b>${qty}</b> ${p.unit}</td></tr>`;
+            }).join("")}
+          </table>`}
+      </div>
+      ${SHOPS.map(shop => {
+        const o = todays.find(x => x.shopId===shop.id && x.batch===batch);
+        return `
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div><b>${shop.name}</b><div class="hint">${shop.area}</div></div>
+              ${o ? `<span class="status ${o.status==="pending"?"pending":""}">${o.status==="pending"?"ऑर्डर आया":"डिलीवर"}</span>` : `<span class="pill">ऑर्डर नहीं</span>`}
+            </div>
+            ${o ? `
+              <div style="margin-top:8px">
+                ${o.items.map(i=>{
+                  const p=PRODUCTS.find(x=>x.id===i.id);
+                  return `<div class="order-line"><span>${p.emoji} ${p.en}</span><b>× ${i.qty}</b></div>`;
+                }).join("")}
+                <div style="margin-top:10px">
+                  ${o.status==="pending"
+                    ? `<button class="btn btn-dark" onclick="markDelivered('${o.id}')">डिलीवर मार्क करें</button>`
+                    : `<p class="hint">डिलीवरी हो चुकी</p>`}
+                </div>
+              </div>` : `<p class="hint" style="margin-top:8px">दुकान ने इस बैच का ऑर्डर नहीं भेजा।</p>`}
+          </div>`;
+      }).join("")}
+      <div class="card">
+        <h3 class="dev" style="margin:0 0 8px">सभी दिन (डेमो)</h3>
+        ${state.orders.length===0 ? `<p class="hint">अभी तक कोई ऑर्डर नहीं। दुकान से लॉगिन करके भेजें।</p>` :
+          [...state.orders].reverse().slice(0,12).map(o=>{
+            const shop=SHOPS.find(s=>s.id===o.shopId);
+            return `<div class="order-line"><span>${fmtDate(o.date)} · ${shop.name} · ${o.batch==="subah"?"सुबह":"शाम"}</span><span class="status ${o.status==="pending"?"pending":""}">${o.status}</span></div>`;
+          }).join("")}
+        <div style="margin-top:10px"><button class="btn btn-ghost" onclick="resetDemo()">डेमो डेटा मिटाएँ</button></div>
+      </div>
+    </div>
+  `;
+}
+
+function markDelivered(id) {
+  const o = state.orders.find(x => x.id === id);
+  if (!o) return;
+  o.status = "delivered";
+  save(state);
+  toast("डिलीवरी सेव हो गई");
+  render();
+}
+
+function resetDemo() {
+  if (!confirm("सारे ऑर्डर मिट जाएँगे?")) return;
+  state = { orders: [] };
+  save(state);
+  toast("क्लियर");
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
