@@ -174,23 +174,34 @@ const DEFAULT_SHOPS = [
 const VENDOR = { pin: "0000", name: "राम डेयरी" };
 const ADMIN = { pin: "9999", name: "Admin" };
 
-const KEY = "doodhsetu_v2";
+const KEY = "doodhsetu_v3";
+
+function withStatus(list) {
+  return list.map(s => ({ ...s, status: s.status || "approved" }));
+}
 
 function load() {
   const raw = localStorage.getItem(KEY);
   if (raw) {
     const s = JSON.parse(raw);
-    if (!s.shops || !s.shops.length) s.shops = DEFAULT_SHOPS.slice();
+    if (!s.shops) s.shops = withStatus(DEFAULT_SHOPS.slice());
+    else s.shops = s.shops.map(x => ({ ...x, status: x.status || "approved" }));
     if (!s.orders) s.orders = [];
     if (!s.vendorPin) s.vendorPin = VENDOR.pin;
     if (!s.adminPin) s.adminPin = ADMIN.pin;
     return s;
   }
-  return { orders: [], shops: DEFAULT_SHOPS.slice(), vendorPin: VENDOR.pin, adminPin: ADMIN.pin };
+  return { orders: [], shops: withStatus(DEFAULT_SHOPS.slice()), vendorPin: VENDOR.pin, adminPin: ADMIN.pin };
 }
 function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
 function shops() { return state.shops; }
+function approvedShops() { return state.shops.filter(s => s.status === "approved"); }
+function pendingShops() { return state.shops.filter(s => s.status === "pending"); }
 function shopById(id) { return state.shops.find(s => s.id === id); }
+function shopByPhone(phone) {
+  const p = String(phone||"").replace(/\D/g,"");
+  return state.shops.find(s => String(s.phone||"").replace(/\D/g,"") === p);
+}
 
 let state = load();
 let session = JSON.parse(sessionStorage.getItem("doodh_session") || "null");
@@ -198,6 +209,8 @@ let cart = {};
 let batch = "subah";
 let loginRole = "shop";
 let vendorTab = "orders";
+let shopTab = "menu";
+let showRegister = false;
 
 function todayISO() {
   const d = new Date();
@@ -256,22 +269,44 @@ function renderLogin() {
         </div>
       </div>
       <div class="card">
-        ${loginRole==="shop" ? `
-          <label>दुकान चुनें</label>
-          <select id="shopSel">${shops().map(s=>`<option value="${s.id}">${s.name} — ${s.phone}</option>`).join("")}</select>
+        ${loginRole==="shop" ? (showRegister ? `
+          <h3 class="dev" style="margin:0 0 8px">नई दुकान रजिस्टर</h3>
+          <p class="hint" style="margin-top:0">एडमिन अप्रूव करने के बाद ही लॉगिन होगा। कोई और आपकी डिटेल यहाँ नहीं देख सकता।</p>
+          <label>दुकान का नाम</label>
+          <input id="rName" placeholder="सिर्फ आप और एडमिन देखेंगे" />
+          <div style="height:8px"></div>
+          <label>पता</label>
+          <input id="rAddr" placeholder="पूरा पता" />
+          <div style="height:8px"></div>
+          <label>फोन नंबर</label>
+          <input id="rPhone" inputmode="tel" placeholder="लॉगिन इसी नंबर से होगा" />
+          <p class="hint">PIN दुकान नहीं बनाएगी। एडमिन अप्रूव करके PIN देगा।</p>
+          <div style="height:12px"></div>
+          <button class="btn btn-primary" onclick="registerShop()">अप्रूवल के लिए भेजें</button>
+          <div style="height:8px"></div>
+          <button class="btn btn-ghost" onclick="showRegister=false;render()">वापस लॉगिन</button>
+        ` : `
+          <label>अपना फोन नंबर</label>
+          <input id="phone" inputmode="tel" placeholder="रजिस्टर्ड फोन नंबर" />
           <div style="height:10px"></div>
-          <label>दुकान PIN</label>
-          <input id="pin" type="password" inputmode="numeric" placeholder="PIN: 1111 / 2222 / 3333" />
-        ` : loginRole==="vendor" ? `
+          <label>एडमिन वाला PIN</label>
+          <input id="pin" type="password" inputmode="numeric" placeholder="जो PIN एडमिन ने दिया" />
+          <div style="height:12px"></div>
+          <button class="btn btn-primary" onclick="doLogin()">लॉगिन</button>
+          <div style="height:8px"></div>
+          <button class="btn btn-ghost" onclick="showRegister=true;render()">नई दुकान रजिस्टर करें</button>
+          <p class="hint">नाम/नंबर लिस्ट में नहीं दिखते। पहले रजिस्टर → एडमिन अप्रूव + PIN दे → फिर फोन और PIN से लॉगिन।</p>
+        `) : loginRole==="vendor" ? `
           <label>वेंडर PIN</label>
-          <input id="pin" type="password" inputmode="numeric" placeholder="डिफ़ॉल्ट PIN: 0000" />
+          <input id="pin" type="password" inputmode="numeric" placeholder="वेंडर PIN" />
+          <div style="height:12px"></div>
+          <button class="btn btn-primary" onclick="doLogin()">लॉगिन</button>
         ` : `
           <label>एडमिन PIN</label>
-          <input id="pin" type="password" inputmode="numeric" placeholder="डिफ़ॉल्ट PIN: 9999" />
+          <input id="pin" type="password" inputmode="numeric" placeholder="एडमिन PIN" />
+          <div style="height:12px"></div>
+          <button class="btn btn-primary" onclick="doLogin()">लॉगिन</button>
         `}
-        <div style="height:12px"></div>
-        <button class="btn btn-primary" onclick="doLogin()">लॉगिन</button>
-        <p class="hint">यह डेमो आपके फोन में ही सेव होता है (localStorage)। सर्वर नहीं लगा है।</p>
       </div>
     </div>
     <div class="footer-note">DoodhSetu demo · morning + evening batches</div>
@@ -287,10 +322,14 @@ function doLogin() {
     if (pin !== state.vendorPin) return toast("गलत वेंडर PIN");
     session = { role: "vendor" };
   } else {
-    const shopId = document.getElementById("shopSel").value;
-    const shop = shopById(shopId);
-    if (!shop || pin !== shop.pin) return toast("गलत दुकान PIN");
-    session = { role: "shop", shopId };
+    const phone = document.getElementById("phone").value.trim();
+    const shop = shopByPhone(phone);
+    if (!shop) return toast("यह नंबर रजिस्टर नहीं है — पहले रजिस्टर करें");
+    if (shop.status !== "approved") return toast("एडमिन अभी अप्रूव नहीं किया");
+    if (!shop.pin) return toast("एडमिन ने PIN अभी नहीं दिया");
+    if (pin !== shop.pin) return toast("गलत PIN — एडमिन से नया PIN लें");
+    session = { role: "shop", shopId: shop.id };
+    shopTab = "menu";
   }
   persistSession();
   cart = {};
@@ -305,81 +344,84 @@ function logout() {
 
 function renderShop() {
   const shop = shopById(session.shopId);
-  const items = PRODUCTS.map(p => {
-    const q = cart[p.id] || 0;
-    return `
+  const cartItems = PRODUCTS.filter(p => cart[p.id] > 0);
+  const totalQty = Object.values(cart).reduce((a,b)=>a+b,0);
+  const totalAmt = PRODUCTS.reduce((s,p)=> s + (cart[p.id]||0)*p.price, 0);
+  const myOrders = state.orders
+    .filter(o => o.shopId === shop.id)
+    .sort((a,b) => (b.date+b.batch+b.id).localeCompare(a.date+a.batch+a.id))
+    .slice(0, 8);
+
+  const menuHtml = PRODUCTS.map(p => `
       <div class="prod">
         <div class="emoji">${p.emoji}</div>
         <div class="grow">
           <h4>${p.name}</h4>
           <p>${p.en} · ₹${p.price}/${p.unit}</p>
         </div>
+        <button class="btn btn-dark btn-sm" onclick="chg('${p.id}',1);shopTab='cart';render()">कार्ट में</button>
+      </div>`).join("");
+
+  const cartHtml = cartItems.length===0 ? `<p class="hint">कार्ट खाली है। मेनू से आइटम डालें。</p>` : cartItems.map(p => `
+      <div class="prod">
+        <div class="emoji">${p.emoji}</div>
+        <div class="grow">
+          <h4>${p.name}</h4>
+          <p>₹${p.price} × ${cart[p.id]} = ₹${p.price*cart[p.id]}</p>
+        </div>
         <div class="stepper">
           <button onclick="chg('${p.id}',-1)">−</button>
-          <span>${q}</span>
+          <span>${cart[p.id]}</span>
           <button onclick="chg('${p.id}',1)">+</button>
         </div>
-      </div>`;
-  }).join("");
-
-  const myOrders = state.orders
-    .filter(o => o.shopId === shop.id)
-    .sort((a,b) => (b.date+b.batch+b.id).localeCompare(a.date+a.batch+a.id))
-    .slice(0, 8);
-
-  const totalQty = Object.values(cart).reduce((a,b)=>a+b,0);
-  const totalAmt = PRODUCTS.reduce((s,p)=> s + (cart[p.id]||0)*p.price, 0);
+      </div>`).join("");
 
   document.getElementById("app").innerHTML = `
     <div class="topbar">
       <div class="brand">
         <div class="logo">द</div>
-        <div><strong>${shop.name}</strong><small>${shop.area}</small></div>
+        <div><strong>${shop.name}</strong><small>आपका अकाउंट</small></div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">बाहर</button>
     </div>
     <div class="screen">
-      <div class="card">
-        <b>${shop.name}</b>
-        <div class="hint" style="margin-top:6px">पता: ${shop.address}</div>
-        <div class="hint">फोन: <a href="tel:${shop.phone}">${shop.phone}</a></div>
+      <div class="tabs" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="tab ${shopTab==="menu"?"on":""}" onclick="shopTab='menu';render()">मेनू</div>
+        <div class="tab ${shopTab==="cart"?"on":""}" onclick="shopTab='cart';render()">कार्ट${totalQty?` (${totalQty})`:""}</div>
+        <div class="tab ${shopTab==="orders"?"on":""}" onclick="shopTab='orders';render()">ऑर्डर</div>
       </div>
-      <div class="tabs">
-        <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">
-          सुबह का बैच<small>आज डिलीवरी</small>
+      ${shopTab==="menu" ? `<div class="card">${menuHtml}</div>` : ""}
+      ${shopTab==="cart" ? `
+        <div class="tabs">
+          <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">सुबह</div>
+          <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">शाम</div>
         </div>
-        <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">
-          शाम का बैच<small>आज शाम</small>
-        </div>
-      </div>
-      <div class="card">
-        ${items}
-        <div style="display:flex;justify-content:space-between;margin-top:12px;align-items:center">
-          <div>
-            <div class="hint">${totalQty} आइटम</div>
-            <b>₹${totalAmt}</b>
-          </div>
-          <div class="row" style="width:auto;gap:8px">
-            <button class="btn btn-ghost btn-sm" onclick="repeatLast()">पिछला दोहराएँ</button>
-            <button class="btn btn-primary btn-sm" style="width:auto;padding:10px 16px" onclick="placeOrder()">ऑर्डर भेजें</button>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <h3 class="dev" style="margin:0 0 8px">पिछले ऑर्डर</h3>
-        ${myOrders.length===0 ? `<p class="hint">अभी कोई ऑर्डर नहीं।</p>` :
-          myOrders.map(o => `
-            <div style="padding:8px 0;border-bottom:1px dashed var(--line)">
-              <div style="display:flex;justify-content:space-between">
-                <b>${fmtDate(o.date)} · ${o.batch==="subah"?"सुबह":"शाम"}</b>
-                <span class="status ${o.status==="pending"?"pending":""}">${o.status==="pending"?"लंबित":"डिलीवर"}</span>
-              </div>
-              <div class="hint">${o.items.map(i=>{
-                const p=PRODUCTS.find(x=>x.id===i.id); return `${p.en} × ${i.qty}`;
-              }).join(" · ")}</div>
+        <div class="card">
+          ${cartHtml}
+          <div style="display:flex;justify-content:space-between;margin-top:12px;align-items:center">
+            <div><div class="hint">${totalQty} आइटम · ${batch==="subah"?"सुबह":"शाम"}</div><b>₹${totalAmt}</b></div>
+            <div class="row" style="width:auto">
+              <button class="btn btn-ghost btn-sm" onclick="repeatLast()">पिछला</button>
+              <button class="btn btn-primary btn-sm" onclick="placeOrder()">ऑर्डर भेजें</button>
             </div>
-          `).join("")}
-      </div>
+          </div>
+        </div>` : ""}
+      ${shopTab==="orders" ? `
+        <div class="card">
+          <h3 class="dev" style="margin:0 0 8px">आपके ऑर्डर</h3>
+          ${myOrders.length===0 ? `<p class="hint">अभी कोई ऑर्डर नहीं।</p>` :
+            myOrders.map(o => `
+              <div style="padding:8px 0;border-bottom:1px dashed #eadcc8">
+                <div style="display:flex;justify-content:space-between">
+                  <b>${fmtDate(o.date)} · ${o.batch==="subah"?"सुबह":"शाम"}</b>
+                  <span class="status ${o.status==="pending"?"pending":""}">${o.status==="pending"?"लंबित":"डिलीवर"}</span>
+                </div>
+                <div class="hint">${o.items.map(i=>{
+                  const p=PRODUCTS.find(x=>x.id===i.id); return `${p.en} × ${i.qty}`;
+                }).join(" · ")}</div>
+              </div>
+            `).join("")}
+        </div>` : ""}
     </div>
   `;
 }
@@ -475,7 +517,7 @@ function renderVendor() {
             }).join("")}
           </table>`}
       </div>
-      ${shops().map(shop => {
+      ${approvedShops().map(shop => {
         const o = todays.find(x => x.shopId===shop.id && x.batch===batch);
         return `
           <div class="card">
@@ -577,8 +619,19 @@ function renderAdminShops() {
       <div style="height:12px"></div>
       <button class="btn btn-primary" onclick="addShop()">+ नई दुकान सेव करें</button>
     </div>
+    ${pendingShops().length ? `<div class="card"><h3 class="dev" style="margin:0 0 8px">अप्रूवल बाकी</h3>
+      ${pendingShops().map(s => `
+        <div style="padding:8px 0;border-bottom:1px dashed #eadcc8">
+          <b>${s.name}</b>
+          <div class="hint">${s.address} · ${s.phone}</div>
+          <label style="margin-top:8px">इस दुकान को PIN दें</label>
+          <input id="apin-${s.id}" inputmode="numeric" placeholder="जैसे 4488" />
+          <button class="btn btn-primary" style="margin-top:8px" onclick="approveShop('${s.id}')">PIN देकर अप्रूव करें</button>
+        </div>`).join("")}
+    </div>` : ""}
     ${shops().map(s => `
       <div class="card">
+        <div style="display:flex;justify-content:space-between"><span class="pill">${s.status==="approved"?"अप्रूव्ड":"पेंडिंग"}</span></div>
         <label>दुकान का नाम</label>
         <input id="eName-${s.id}" value="${esc(s.name)}" />
         <div style="height:8px"></div>
@@ -630,6 +683,34 @@ function esc(v) {
   return String(v||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 }
 
+function registerShop() {
+  const name = document.getElementById("rName").value.trim();
+  const address = document.getElementById("rAddr").value.trim();
+  const phone = document.getElementById("rPhone").value.trim();
+  if (!name || !address || !phone) return toast("नाम, पता और फोन भरें");
+  if (shopByPhone(phone)) return toast("यह नंबर पहले से रजिस्टर है");
+  state.shops.push({
+    id: "s"+Date.now(), name, area: address.split(",")[0]||"", address, phone, pin: "", status: "pending"
+  });
+  save(state);
+  showRegister = false;
+  toast("रिक्वेस्ट गई — एडमिन PIN देकर अप्रूव करेगा");
+  render();
+}
+
+function approveShop(id) {
+  const s = shopById(id);
+  if (!s) return;
+  const inp = document.getElementById("apin-"+id);
+  const pin = inp ? inp.value.trim() : "";
+  if (pin.length < 4) return toast("इस दुकान के लिए 4 अंक का PIN लिखें");
+  s.pin = pin;
+  s.status = "approved";
+  save(state);
+  toast("अप्रूव + PIN सेट: " + pin);
+  render();
+}
+
 function addShop() {
   const name = document.getElementById("nName").value.trim();
   const address = document.getElementById("nAddr").value.trim();
@@ -639,13 +720,15 @@ function addShop() {
   if (!address) return toast("पता डालें");
   if (!phone) return toast("फोन नंबर डालें");
   if (!pin) return toast("दुकान PIN डालें");
+  if (shopByPhone(phone)) return toast("यह नंबर पहले से है");
   state.shops.push({
     id: "s"+Date.now(),
     name,
     area: address.split(",")[0] || "",
     address,
     phone,
-    pin
+    pin,
+    status: "approved"
   });
   save(state);
   toast("नई दुकान जुड़ गई");
