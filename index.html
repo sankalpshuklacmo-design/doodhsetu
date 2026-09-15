@@ -213,10 +213,30 @@ let vcart = {};
 let shopTab = "menu";
 let showRegister = false;
 
-function todayISO() {
-  const d = new Date();
+function nowIST() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+}
+function toISO(d) {
   const z = n => String(n).padStart(2,"0");
   return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+}
+function todayISO() { return toISO(nowIST()); }
+function windowInfo(b) {
+  if (b === "subah") return { ok: "रात 10:00 से 11:59 बजे", start: 22*60, end: 24*60 };
+  return { ok: "दोपहर 12:00 से 2:00 बजे", start: 12*60, end: 14*60 };
+}
+function canOrderNow(b) {
+  const d = nowIST();
+  const mins = d.getHours()*60 + d.getMinutes();
+  const w = windowInfo(b);
+  return mins >= w.start && mins < w.end;
+}
+function deliveryDate(b) {
+  const d = nowIST();
+  if (b === "subah") {
+    if (d.getHours() >= 22) d.setDate(d.getDate()+1);
+  }
+  return toISO(d);
 }
 function fmtDate(iso) {
   const [y,m,d] = iso.split("-");
@@ -250,7 +270,7 @@ function renderLogin() {
     <div class="screen">
       <div class="card hero">
         <h1 class="dev">रोज़ का ऑर्डर,<br/>बिना कॉपी के।</h1>
-        <p>दुकानदार ऐप से ऑर्डर भेजे। वेंडर को सुबह–शाम की पूरी लिस्ट मिल जाए।</p>
+        <p>सुबह का ऑर्डर रात 10:00–11:59। शाम का ऑर्डर दोपहर 12:00–2:00।</p>
       </div>
       <div class="card">
         <label>आप कौन हैं?</label>
@@ -416,10 +436,14 @@ function renderShop() {
       ${shopTab==="menu" ? `<div class="card">${menuHtml}</div>` : ""}
       ${shopTab==="cart" ? `
         <div class="tabs">
-          <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">सुबह</div>
-          <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">शाम</div>
+          <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">सुबह<small>रात 10–12 बजे</small></div>
+          <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">शाम<small>दोपहर 12–2 बजे</small></div>
         </div>
         <div class="card">
+          <p class="hint" style="margin-top:0">${batch==="subah"
+            ? "सुबह का दूध: पिछली रात 10:00 pm से 11:59 pm तक ऑर्डर करें। डिलीवरी अगली सुबह।"
+            : "शाम का दूध: दोपहर 12:00 pm से 2:00 pm तक ऑर्डर करें। डिलीवरी आज शाम।"}
+            ${canOrderNow(batch) ? " · अभी विंडो खुली है" : " · अभी विंडो बंद है"}</p>
           ${cartHtml}
           <div style="display:flex;justify-content:space-between;margin-top:12px;align-items:center">
             <div><div class="hint">${totalQty} आइटम · ${batch==="subah"?"सुबह":"शाम"}</div><b>₹${totalAmt}</b></div>
@@ -469,7 +493,8 @@ function placeOrder() {
   const items = Object.entries(cart).filter(([,q])=>q>0).map(([id,qty])=>({id,qty}));
   if (!items.length) return toast("पहले मात्रा चुनें");
   const shop = shopById(session.shopId);
-  const existing = state.orders.find(o => o.shopId===shop.id && o.date===todayISO() && o.batch===batch && o.status==="pending");
+  if (!canOrderNow(batch)) return toast((batch==="subah"?"सुबह":"शाम")+" का ऑर्डर "+windowInfo(batch).ok+" ही लगेगा");
+  const existing = state.orders.find(o => o.shopId===shop.id && o.date===deliveryDate(batch) && o.batch===batch && o.status==="pending");
   if (existing) {
     existing.items = items;
     existing.ts = Date.now();
@@ -478,7 +503,7 @@ function placeOrder() {
     state.orders.push({
       id: "o"+Date.now(),
       shopId: shop.id,
-      date: todayISO(),
+      date: deliveryDate(batch),
       batch,
       items,
       status: "pending",
@@ -493,7 +518,10 @@ function placeOrder() {
 
 function renderVendor() {
   const date = todayISO();
-  const todays = state.orders.filter(o => o.date === date);
+  const todays = state.orders.filter(o =>
+    (o.batch==="subah" && o.date===deliveryDate("subah")) ||
+    (o.batch==="shaam" && o.date===deliveryDate("shaam"))
+  );
   const byBatch = b => todays.filter(o => o.batch === b);
   const pending = todays.filter(o => o.status === "pending").length;
 
@@ -523,10 +551,10 @@ function renderVendor() {
       ${vendorTab==="shops" ? renderAdminShops() : `
       <div class="tabs">
         <div class="tab ${batch==="subah"?"on":""}" onclick="batch='subah';render()">
-          सुबह<small>${byBatch("subah").length} ऑर्डर</small>
+          सुबह<small>ऑर्डर रात 10–12 · ${byBatch("subah").length}</small>
         </div>
         <div class="tab ${batch==="shaam"?"on":""}" onclick="batch='shaam';render()">
-          शाम<small>${byBatch("shaam").length} ऑर्डर</small>
+          शाम<small>ऑर्डर 12–2 pm · ${byBatch("shaam").length}</small>
         </div>
       </div>
       <div class="card">
@@ -571,6 +599,7 @@ function renderVendor() {
               </div>` : ""}
             <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #eadcc8">
               <b>इस दुकान का ऑर्डर लिखें</b>
+              <p class="hint">${batch==="subah"?"सुबह: रात 10:00–11:59 pm":"शाम: दोपहर 12:00–2:00 pm"} ${canOrderNow(batch)?"· विंडो खुली":"· अभी बंद"}</p>
               ${PRODUCTS.map(p => {
                 const q = (vcart[shop.id] && vcart[shop.id][p.id]) || 0;
                 return `<div class="prod">
@@ -612,10 +641,11 @@ function vendorPlace(shopId) {
   const bag = vcart[shopId] || {};
   const items = Object.entries(bag).filter(([,q])=>q>0).map(([id,qty])=>({id,qty}));
   if (!items.length) return toast("पहले दूध/दही की मात्रा चुनें");
-  const existing = state.orders.find(o => o.shopId===shopId && o.date===todayISO() && o.batch===batch && o.status==="pending");
+  if (!canOrderNow(batch)) return toast((batch==="subah"?"सुबह":"शाम")+" का ऑर्डर "+windowInfo(batch).ok+" ही खुलेगा");
+  const existing = state.orders.find(o => o.shopId===shopId && o.date===deliveryDate(batch) && o.batch===batch && o.status==="pending");
   if (existing) { existing.items = items; existing.ts = Date.now(); }
   else {
-    state.orders.push({ id:"o"+Date.now(), shopId, date:todayISO(), batch, items, status:"pending", ts:Date.now() });
+    state.orders.push({ id:"o"+Date.now(), shopId, date:deliveryDate(batch), batch, items, status:"pending", ts:Date.now() });
   }
   save(state);
   vcart[shopId] = {};
