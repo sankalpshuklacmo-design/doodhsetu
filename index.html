@@ -209,6 +209,7 @@ let cart = {};
 let batch = "subah";
 let loginRole = "shop";
 let vendorTab = "orders";
+let vcart = {};
 let shopTab = "menu";
 let showRegister = false;
 
@@ -529,6 +530,11 @@ function renderVendor() {
         </div>
       </div>
       <div class="card">
+        <h3 class="dev" style="margin:0 0 8px">दूध मेनू</h3>
+        <p class="hint" style="margin-top:0">दुकान वाला अपने लॉगिन से भी ऑर्डर दे सकता है। वेंडर नीचे हर दुकान पर प्रोडक्ट लिख सकता है।</p>
+        ${PRODUCTS.map(p=>`<div class="order-line"><span>${p.emoji} ${p.name} · ${p.en}</span><b>₹${p.price}</b></div>`).join("")}
+      </div>
+      <div class="card">
         <h3 class="dev" style="margin:0 0 8px">पैकिंग लिस्ट · ${batch==="subah"?"सुबह":"शाम"}</h3>
         ${Object.keys(pack).length===0 ? `<p class="hint">इस बैच में अभी ऑर्डर नहीं।</p>` : `
           <table>
@@ -562,7 +568,23 @@ function renderVendor() {
                     ? `<button class="btn btn-dark" onclick="markDelivered('${o.id}')">डिलीवर मार्क करें</button>`
                     : `<p class="hint">डिलीवरी हो चुकी</p>`}
                 </div>
-              </div>` : `<p class="hint" style="margin-top:8px">दुकान ने इस बैच का ऑर्डर नहीं भेजा।</p>`}
+              </div>` : ""}
+            <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #eadcc8">
+              <b>इस दुकान का ऑर्डर लिखें</b>
+              ${PRODUCTS.map(p => {
+                const q = (vcart[shop.id] && vcart[shop.id][p.id]) || 0;
+                return `<div class="prod">
+                  <div class="emoji">${p.emoji}</div>
+                  <div class="grow"><h4>${p.name}</h4><p>${p.en} · ₹${p.price}</p></div>
+                  <div class="stepper">
+                    <button onclick="vchg('${shop.id}','${p.id}',-1)">−</button>
+                    <span>${q}</span>
+                    <button onclick="vchg('${shop.id}','${p.id}',1)">+</button>
+                  </div>
+                </div>`;
+              }).join("")}
+              <button class="btn btn-primary" onclick="vendorPlace('${shop.id}')">${batch==="subah"?"सुबह":"शाम"} ऑर्डर सेव</button>
+            </div>
           </div>`;
       }).join("")}
       <div class="card">
@@ -577,6 +599,28 @@ function renderVendor() {
       `}
     </div>
   `;
+}
+
+function vchg(shopId, pid, d) {
+  if (!vcart[shopId]) vcart[shopId] = {};
+  vcart[shopId][pid] = Math.max(0, (vcart[shopId][pid]||0) + d);
+  if (!vcart[shopId][pid]) delete vcart[shopId][pid];
+  render();
+}
+
+function vendorPlace(shopId) {
+  const bag = vcart[shopId] || {};
+  const items = Object.entries(bag).filter(([,q])=>q>0).map(([id,qty])=>({id,qty}));
+  if (!items.length) return toast("पहले दूध/दही की मात्रा चुनें");
+  const existing = state.orders.find(o => o.shopId===shopId && o.date===todayISO() && o.batch===batch && o.status==="pending");
+  if (existing) { existing.items = items; existing.ts = Date.now(); }
+  else {
+    state.orders.push({ id:"o"+Date.now(), shopId, date:todayISO(), batch, items, status:"pending", ts:Date.now() });
+  }
+  save(state);
+  vcart[shopId] = {};
+  toast("ऑर्डर सेव हो गया");
+  render();
 }
 
 function markDelivered(id) {
